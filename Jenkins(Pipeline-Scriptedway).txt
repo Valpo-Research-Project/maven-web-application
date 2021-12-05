@@ -1,0 +1,77 @@
+/* if you want to run on any specific node
+node('NodeName'){         // Here if you won't specify any node name by default it runs on the master node.
+*/
+node{
+def MavenHome = tool name: "Maven3.8.4"
+properties([[$class: 'JobLocalConfiguration', changeReasonComment: ''], pipelineTriggers([cron('* * * * *')])]) //Build Trigger Every Minute
+stage('CheckOutCode'){
+git branch: 'patch-1', credentialsId: '208eb166-4265-46f1-b552-954f3042c236', url: 'https://github.com/Valpo-Research-Project/maven-web-application.git'    
+}    
+stage('Build'){
+sh "${MavenHome}/bin/mvn clean package"    
+}    
+stage('ExecuteSonarQubeReport'){
+sh "${MavenHome}/bin/mvn clean package sonar:sonar"    
+}
+stage('UploadingArtifactsIntoNexusRepo'){
+sh "${MavenHome}/bin/mvn deploy"
+}
+stage('DeployAppIntoTomcatServer'){
+sshagent(['194c69c5-e577-4db1-a3df-1594d963e18d']) {
+sh "scp -o StrictHostKeyChecking=no target/maven-web-application.war ec2-user@13.59.24.101:/opt/apache-tomcat-9.0.55/webapps/"   
+}
+}
+/*stage ('SendingEmailNotification--PluginEmailNotification--BuildFailure'){
+    mail bcc: '', body: '''Hi Michael...
+This email is about configuration email to give update to the employees about Build Status ( i.e. Success/Failure) .
+
+Thanks and Regards,
+Sathvik Bolla''', cc: 'sathviksanjaykumarreddy.bolla@valpo.edu', from: '', replyTo: '', subject: 'CI/CD Pipeline--Scripted way', to: 'michael.glass@valpo.edu'
+}*/
+stage('SendingEmailNotification--Plugin(EditableEmailNotification--BuildSuccess--NoMailSending'){
+emailext body: '''Hi Michael..
+This email is all about updating intimating Build Status to the Developers ( i.e. Success or Failure) 
+
+Thanks and Regards,
+Sathvik Bolla.''', recipientProviders: [developers()], subject: 'CI/CD Pipeline Build Status', to: 'michael.glass@valpo.edu,sathviksanjaykumarreddy.bolla@valpo.edu'    
+}
+}
+
+
+
+
+
+//Note: In realtime we are going to save this scripted file in Git repository only or any other version control system.Default file name is : jenkkinsfile, if we want, we can give the customfile name also.
+In this scenario, we have to choose pipeline script from SCM in the pipeline definition.
+                                  ------------------------        --------------------
+
+just follow the below informaion to get an idea of above note point: all these inforamtion is available in pipeline tab( edit window after click on the job configuration tab)
+--------------------------------------------------------------------
+
+ 
+Pipeline
+Definition
+
+Pipeline script from SCM      // If We select this Option, we need to verify two things very clearly. First one is: The branch where the script is located(specify the same branch in the "Branch Specifier" under the "Branches to Build". Second one is: Script file name( we have to specify same file name in the"Script Path" 
+SCM
+
+Git
+Repositories
+Repository URL
+Please enter Git repository.
+Credentials
+
+- none -
+ 
+ 
+Branches to build
+Branch Specifier (blank for 'any')
+*/master  // (we have to specify here the Branch where Pipeline Scripted is Located).  Special Note: The Code Building Branch(Where project Source Code is located) is different from the Pipeline-Script Building Branch( Location of the Pipeline Script). 
+Repository browser
+
+(Auto)
+Additional Behaviours
+Script Path
+Jenkinsfile     // This is Default Path Name. (In realtime scenario, if we changed the filename: Then we have to specify that file name only).
+Lightweight checkout
+Pipeline Syntax 
