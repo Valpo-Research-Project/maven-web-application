@@ -1,0 +1,34 @@
+node{
+def MavenHome = tool name: "Maven3.8.4"
+stage('CheckOutCode'){
+git branch: 'patch-1', credentialsId: '208eb166-4265-46f1-b552-954f3042c236', url: 'https://github.com/Valpo-Research-Project/maven-web-application.git'    
+}    
+stage('Build'){
+sh "${MavenHome}/bin/mvn clean package"    
+}    
+stage('ExecuteSonarQubeReport'){
+sh "${MavenHome}/bin/mvn clean package sonar:sonar"    
+}
+stage('UploadingArtifactsIntoNexusRepo'){
+sh "${MavenHome}/bin/mvn deploy"
+}
+stage('DeployAppIntoTomcatServer'){
+sshagent(['194c69c5-e577-4db1-a3df-1594d963e18d']) {
+sh "scp -o StrictHostKeyChecking=no target/maven-web-application.war ec2-user@13.59.24.101:/opt/apache-tomcat-9.0.55/webapps/"   
+}
+}
+/*stage ('SendingEmailNotification--PluginEmailNotification--BuildFailure'){
+    mail bcc: '', body: '''Hi Michael...
+This email is about configuration email to give update to the employees about Build Status ( i.e. Success/Failure) .
+
+Thanks and Regards,
+Sathvik Bolla''', cc: 'sathviksanjaykumarreddy.bolla@valpo.edu', from: '', replyTo: '', subject: 'CI/CD Pipeline--Scripted way', to: 'michael.glass@valpo.edu'
+}*/
+stage('SendingEmailNotification--Plugin(EditableEmailNotification--BuildSuccess--NoMailSending'){
+emailext body: '''Hi Michael..
+This email is all about updating intimating Build Status to the Developers ( i.e. Success or Failure) 
+
+Thanks and Regards,
+Sathvik Bolla.''', recipientProviders: [developers()], subject: 'CI/CD Pipeline Build Status', to: 'michael.glass@valpo.edu,sathviksanjaykumarreddy.bolla@valpo.edu'    
+}
+}
